@@ -1,6 +1,6 @@
 # VyuhShastra-Backend
 
-# Steps to run the frontend 
+# Steps to run the backend 
 1) docker build -t vyuhshastra-backend .
 2) docker run -p 5000:5000 vyuhshastra-backend (http://localhost:5000)
 

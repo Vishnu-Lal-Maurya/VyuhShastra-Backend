@@ -1,13 +1,26 @@
 # app.py
 from flask import Flask
+from flask_cors import CORS
 
 app = Flask(__name__)
 
-@app.route('/api')
+CORS(app)
+
+
+
+@app.route('/')
 def hello_world():
-    return "Hello from Flask!"
+    return "hello world  to me"
 
 
+# API Endpoint for Hello World
+@app.route('/', methods=['POST'])
+def hello_world_post():
+    return jsonify({
+        'message': f"Hello from Flask!"
+    })
+
+ 
 
 
 

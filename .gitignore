@@ -5,3 +5,5 @@ __pycache__/
 *.pyd
 *.db
 *.log
+
+product_env

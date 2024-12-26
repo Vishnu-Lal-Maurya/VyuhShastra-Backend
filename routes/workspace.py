@@ -129,3 +129,88 @@ def delete_workspace(workspace_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+    
+
+@workspace_bp.route('/<int:workspace_id>/file/<int:file_id>/delete', methods=['DELETE'])
+@jwt_required()
+def delete_file(workspace_id, file_id):
+    try:
+        # Authenticate and verify user
+        dict = json.loads(get_jwt_identity())
+        company_id = dict['id']
+        current_user = Company.query.filter_by(id=company_id).first()
+
+        if not current_user:
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Fetch the file record
+        file = File.query.get(file_id)
+        if not file or file.workspace_id != workspace_id:
+            return jsonify({'error': 'File not found or does not belong to this workspace'}), 404
+
+        # Check if workspace belongs to the current user's company
+        workspace = Workspace.query.get(workspace_id)
+        if not workspace or workspace.company_id != current_user.id:
+            return jsonify({'error': 'Unauthorized to delete files in this workspace'}), 403
+
+        # Delete the file from the filesystem
+        if os.path.exists(file.file_path):
+            os.remove(file.file_path)
+
+        # Delete the file record from the database
+        db.session.delete(file)
+        db.session.commit()
+
+        return jsonify({'message': 'File deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error deleting file: {str(e)}'}), 500
+    
+
+    
+@workspace_bp.route('<int:workspace_id>/file/add_file', methods=['POST'])
+@jwt_required()
+def upload_file_api(workspace_id):
+    try:
+        # Authenticate and verify user
+        dict = json.loads(get_jwt_identity())
+        company_id = dict['id']
+        current_user = Company.query.filter_by(id=company_id).first()
+
+        if not current_user:
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Verify the workspace belongs to the user's company
+        workspace = Workspace.query.get(workspace_id)
+        if not workspace or workspace.company_id != current_user.id:
+            return jsonify({'error': 'Unauthorized to upload files to this workspace'}), 403
+
+        # Check if the request contains a file
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part in the request'}), 400
+
+        file = request.files['file']
+
+        # Validate the file
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        # Secure the filename and save the file
+        filename = secure_filename(file.filename)
+        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        os.makedirs(os.path.dirname(upload_path), exist_ok=True)  # Ensure directory exists
+        file.save(upload_path)
+
+        # Add the file record to the database
+        new_file = File(filename=filename, file_path=upload_path, workspace_id=workspace_id)
+        db.session.add(new_file)
+        db.session.commit()
+
+        return jsonify({'message': 'File uploaded successfully!', 'file_id': new_file.id}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'File upload failed: {str(e)}'}), 500
+
+

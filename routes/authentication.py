@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import db, Company
 import datetime
+import json
 
 # Create a Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -69,7 +70,7 @@ def login():
 
     # Create a JWT access token
     access_token = create_access_token(
-        identity={"id": company.id, "email": company.email},
+        identity=json.dumps({"id": company.id, "email": company.email}),
         expires_delta=datetime.timedelta(hours=1)
     )
 

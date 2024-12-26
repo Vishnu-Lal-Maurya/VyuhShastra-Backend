@@ -6,8 +6,10 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
 from models import db, Company, Workspace, File, Report, Dashboard, Chart
-from routes.authentication import auth_bp
 import os
+
+from routes.authentication import auth_bp
+from routes.workspace import workspace_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -27,10 +29,12 @@ login_manager.init_app(app)
 
 #Register Blueprints here -- 
 app.register_blueprint(auth_bp)
+app.register_blueprint(workspace_bp)
 
 @app.route('/')
 def hello_world():
     return "Hello from Flask!"
+
 
 if __name__ == '__main__':
     with app.app_context():

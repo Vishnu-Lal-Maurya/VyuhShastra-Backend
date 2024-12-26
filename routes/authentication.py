@@ -55,6 +55,8 @@ def signup():
 def login():
     data = request.json
 
+    print("login is hit")
+    
     # Extract email and password
     email = data.get('email')
     password = data.get('password')

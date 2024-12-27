@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import os
 import json
-
+import pandas as pd
 
 
 from models import db, Company, Workspace, File, Report, Dashboard, Chart
@@ -226,3 +226,65 @@ def upload_file_api(workspace_id):
 
 
 
+
+@workspace_bp.route('/<int:workspace_id>/file/<int:file_id>/datagrid', methods=['get'])
+@jwt_required()
+def datagrid_file(workspace_id, file_id):
+    try:
+        # Authenticate and verify user
+        dict = json.loads(get_jwt_identity())
+        company_id = dict['id']
+        current_user = Company.query.filter_by(id=company_id).first()
+
+        if not current_user:
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Fetch the file record
+        file = File.query.get(file_id)
+        if not file or file.workspace_id != workspace_id:
+            return jsonify({'error': 'File not found or does not belong to this workspace'}), 404
+
+        # Check if workspace belongs to the current user's company
+        workspace = Workspace.query.get(workspace_id)
+        if not workspace or workspace.company_id != current_user.id:
+            return jsonify({'error': 'Unauthorized to see files in this workspace'}), 403
+        
+        # Read the Excel file using Pandas
+        file_path = excel_file.file_path  # Adjust to your file storage logic
+        df = pd.read_excel(file_path)
+
+        # Default statistics
+        total_rows = len(df)
+        total_columns = len(df.columns)
+        total_null_values = int(df.isnull().sum().sum())  # Sum of all null values across all columns
+
+        # Prepare column statistics
+        column_stats = {
+            col: {
+                "null_values": int(df[col].isnull().sum()),  # Convert to Python int
+                "unique_values": int(df[col].nunique()),    # Convert to Python int
+                "max_value": df[col].max().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
+                "min_value": df[col].min().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
+                "sum": df[col].sum().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
+                "data_type": str(df[col].dtype),
+            }
+            for col in df.columns
+        }
+
+        # Pass data to template
+        context = {
+            'workspace': workspace,
+            'columns': df.columns.tolist(),
+            'rows': df.values.tolist(),
+            'column_stats': column_stats,
+            'total_rows': total_rows,
+            'total_columns': total_columns,
+            'total_null_values': total_null_values,
+            'filename': excel_file.filename
+        }
+        
+        return jsonify({context}), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error viewing file: {str(e)}'}), 500
+    

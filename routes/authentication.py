@@ -7,7 +7,6 @@ import json
 
 # Create a Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
-
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     # Parse JSON request data

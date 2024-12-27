@@ -5,6 +5,8 @@ from datetime import datetime
 import os
 import json
 
+
+
 from models import db, Company, Workspace, File, Report, Dashboard, Chart
 
 workspace_bp = Blueprint('workspace', __name__, url_prefix='/workspace')
@@ -12,6 +14,7 @@ workspace_bp = Blueprint('workspace', __name__, url_prefix='/workspace')
 @workspace_bp.route('/all', methods=['GET'])
 @jwt_required()
 def get_workspaces():
+    print("working")
     dict = json.loads(get_jwt_identity())
     company_id = dict['id']
     workspaces = Workspace.query.filter_by(company_id=company_id).all()
@@ -94,6 +97,12 @@ def create_workspace():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@workspace_bp.route('/dummy', methods=['GET'])
+@jwt_required()
+def isworking():
+    return "yes working"
 
 @workspace_bp.route('/delete/<int:workspace_id>', methods=['DELETE'])
 @jwt_required()

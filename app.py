@@ -4,6 +4,23 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+
+
+from flask import Flask, request, send_from_directory, jsonify
+import os
+
+
+
+
+app = Flask(__name__)
+
+
+
+# Directory where uploaded files are saved
+UPLOAD_FOLDER = 'server/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 from models import db, Company, Workspace, File, Report, Dashboard, Chart
 import os
@@ -34,6 +51,12 @@ app.register_blueprint(workspace_bp)
 @app.route('/')
 def hello_world():
     return "Hello from Flask!"
+
+# Serve the uploaded files
+@app.route('/uploads/<filename>')
+@jwt_required()
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 if __name__ == '__main__':

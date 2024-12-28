@@ -44,6 +44,10 @@ jwt = JWTManager(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+with app.app_context():
+    db.create_all()
+
+
 #Register Blueprints here -- 
 app.register_blueprint(auth_bp)
 app.register_blueprint(workspace_bp)
@@ -59,8 +63,10 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        db.create_all()  # Ensure tables are created if they don't exist
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 

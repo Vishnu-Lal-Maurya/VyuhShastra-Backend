@@ -224,10 +224,14 @@ def upload_file_api(workspace_id):
 
 
 
+from flask import jsonify
+from sqlalchemy.inspection import inspect
 
+def serialize_model(model):
+    """Convert SQLAlchemy model instance to a dictionary."""
+    return {c.key: getattr(model, c.key) for c in inspect(model).mapper.column_attrs}
 
-
-@workspace_bp.route('/<int:workspace_id>/file/<int:file_id>/datagrid', methods=['get'])
+@workspace_bp.route('/<int:workspace_id>/file/<int:file_id>/datagrid', methods=['GET'])
 @jwt_required()
 def datagrid_file(workspace_id, file_id):
     try:
@@ -240,15 +244,15 @@ def datagrid_file(workspace_id, file_id):
             return jsonify({'error': 'Unauthorized access'}), 403
 
         # Fetch the file record
-        file = File.query.get(file_id)
-        if not file or file.workspace_id != workspace_id:
+        excel_file = File.query.get(file_id)
+        if not excel_file or excel_file.workspace_id != workspace_id:
             return jsonify({'error': 'File not found or does not belong to this workspace'}), 404
 
         # Check if workspace belongs to the current user's company
         workspace = Workspace.query.get(workspace_id)
         if not workspace or workspace.company_id != current_user.id:
             return jsonify({'error': 'Unauthorized to see files in this workspace'}), 403
-        
+
         # Read the Excel file using Pandas
         file_path = excel_file.file_path  # Adjust to your file storage logic
         df = pd.read_excel(file_path)
@@ -271,9 +275,12 @@ def datagrid_file(workspace_id, file_id):
             for col in df.columns
         }
 
-        # Pass data to template
+        # Serialize workspace and file
+        serialized_workspace = serialize_model(workspace)
+
+        # Prepare the response context
         context = {
-            'workspace': workspace,
+            'workspace': serialized_workspace,
             'columns': df.columns.tolist(),
             'rows': df.values.tolist(),
             'column_stats': column_stats,
@@ -283,8 +290,7 @@ def datagrid_file(workspace_id, file_id):
             'filename': excel_file.filename
         }
         
-        return jsonify({context}), 200
+        return jsonify(context), 200
 
     except Exception as e:
         return jsonify({'error': f'Error viewing file: {str(e)}'}), 500
-    

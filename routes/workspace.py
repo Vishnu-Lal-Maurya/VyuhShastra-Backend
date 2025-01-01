@@ -230,6 +230,9 @@ from sqlalchemy.inspection import inspect
 def serialize_model(model):
     """Convert SQLAlchemy model instance to a dictionary."""
     return {c.key: getattr(model, c.key) for c in inspect(model).mapper.column_attrs}
+from flask import jsonify
+import pandas as pd
+from scipy.stats import kurtosis, skew
 
 @workspace_bp.route('/<int:workspace_id>/file/<int:file_id>/datagrid', methods=['GET'])
 @jwt_required()
@@ -265,29 +268,28 @@ def datagrid_file(workspace_id, file_id):
         # Prepare column statistics
         column_stats = {
             col: {
-                "null_values": int(df[col].isnull().sum()),  # Convert to Python int
-                "unique_values": int(df[col].nunique()),    # Convert to Python int
+                "null_values": int(df[col].isnull().sum()),  # Count of null values
+                "non_null_values": total_rows - int(df[col].isnull().sum()),  # Count of non-null values
+                "unique_values": int(df[col].nunique()),    # Count of unique values
                 "max_value": df[col].max().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
                 "min_value": df[col].min().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
                 "sum": df[col].sum().item() if pd.api.types.is_numeric_dtype(df[col]) else None,
+                "mean": df[col].mean().item() if pd.api.types.is_numeric_dtype(df[col]) else None,  # Mean
+                "std": df[col].std().item() if pd.api.types.is_numeric_dtype(df[col]) else None,    # Standard Deviation
+                "median": df[col].median().item() if pd.api.types.is_numeric_dtype(df[col]) else None,  # Median
+                "skew": skew(df[col].dropna()) if pd.api.types.is_numeric_dtype(df[col]) else None,  # Skewness
+                "kurtosis": kurtosis(df[col].dropna()) if pd.api.types.is_numeric_dtype(df[col]) else None,  # Kurtosis
+                "mode": df[col].mode().iloc[0] if pd.api.types.is_categorical_dtype(df[col]) else None,  # Mode for categorical data
                 "data_type": str(df[col].dtype),
             }
             for col in df.columns
         }
 
-        # Serialize workspace and file
-        serialized_workspace = serialize_model(workspace)
-
         # Prepare the response context
         context = {
-            'workspace': serialized_workspace,
             'columns': df.columns.tolist(),
             'rows': df.values.tolist(),
-            'column_stats': column_stats,
-            'total_rows': total_rows,
-            'total_columns': total_columns,
-            'total_null_values': total_null_values,
-            'filename': excel_file.filename
+            'column_stats': column_stats
         }
         
         return jsonify(context), 200
